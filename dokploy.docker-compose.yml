@@ -100,25 +100,8 @@ services:
 
 volumes:
   pelican-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ../files/pelican-data
-
   pelican-logs:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ../files/pelican-logs
-
   pelican-db:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ../files/pelican-db
 
 networks:
   panel-network:
