@@ -1,0 +1,131 @@
+x-common:
+  panel:
+    &panel-environment
+    APP_URL: ${APP_URL:-"http://localhost"}
+    LE_EMAIL: ${LE_EMAIL:-""}
+    APP_DEBUG: ${APP_DEBUG:-"false"}
+    APP_ENV: ${APP_ENV:-"production"}
+    BEHIND_PROXY: "true"
+    TRUSTED_PROXIES: "*"
+  mail:
+    &mail-environment
+    MAIL_DRIVER: "log"
+    # MAIL_HOST: ""
+    # MAIL_PORT: ""
+    # MAIL_FROM: ""
+    # MAIL_USERNAME: ""
+    # MAIL_PASSWORD: ""
+    # MAIL_SCHEME: ""
+  database:
+    &db-environment
+    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-"jcpuoihawoih7o3iuhas873"}
+    MYSQL_PASSWORD: &db-password ${MYSQL_PASSWORD:-"alskbo387whdoicb3o87g"}
+    MYSQL_DATABASE: &db-database ${MYSQL_DATABASE:-"panel"}
+    MYSQL_USER: &db-username ${MYSQL_USER:-"pelican"}
+
+services:
+  database:
+    image: mariadb:10.11
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - pelican-db:/var/lib/mysql
+    environment:
+      <<: *db-environment
+    networks:
+      - panel-network
+
+  cache:
+    image: redis:alpine
+    restart: always
+    networks:
+      - panel-network
+
+  panel:
+    image: ghcr.io/pelican-dev/panel:latest
+    restart: unless-stopped
+    networks:
+      - panel-network
+      - wings0
+    # No ports — Dokploy's reverse proxy handles inbound traffic
+    expose:
+      - "80"
+    links:
+      - database
+      - cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - pelican-data:/pelican-data
+      - pelican-logs:/var/www/html/storage/logs
+    environment:
+      <<: [*panel-environment, *mail-environment]
+      XDG_DATA_HOME: /pelican-data
+      SKIP_CADDY: "true"       # ← let Dokploy's proxy handle TLS, not Caddy
+      CACHE_STORE: "redis"
+      SESSION_DRIVER: "redis"
+      QUEUE_CONNECTION: "redis"
+      REDIS_HOST: "cache"
+      DB_CONNECTION: "mariadb"
+      DB_HOST: "database"
+      DB_PORT: "3306"
+      DB_DATABASE: *db-database
+      DB_USERNAME: *db-username
+      DB_PASSWORD: *db-password
+
+  wings:
+    image: ghcr.io/pelican-dev/wings:latest
+    restart: always
+    networks:
+      - wings0
+    ports:
+      - "8080:8080"   # Wings API — must be directly exposed, not proxied
+      - "2022:2022"   # SFTP — must be directly exposed
+    tty: true
+    environment:
+      TZ: ${TZ:-"UTC"}
+      WINGS_UID: 988
+      WINGS_GID: 988
+      WINGS_USERNAME: pelican
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/var/lib/docker/containers/:/var/lib/docker/containers/"
+      - "../files/wings/config/:/etc/pelican/"
+      - "../files/wings/volumes/:/var/lib/pelican/"
+      - "../files/wings/logs/:/var/log/pelican/"
+      - "../files/wings/tmp/:/tmp/pelican/"
+      - "/etc/ssl/certs:/etc/ssl/certs:ro"
+      # - "/srv/daemon-data/:/srv/daemon-data/"
+      # - "/etc/letsencrypt/:/etc/letsencrypt/"
+
+volumes:
+  pelican-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../files/pelican-data
+
+  pelican-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../files/pelican-logs
+
+  pelican-db:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../files/pelican-db
+
+networks:
+  panel-network:
+    # No subnet — let Dokploy assign it automatically
+  wings0:
+    name: wings0
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: wings0
+    # No subnet — let Docker assign it automatically
