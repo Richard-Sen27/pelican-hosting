@@ -61,7 +61,8 @@ services:
     environment:
       <<: [*panel-environment, *mail-environment]
       XDG_DATA_HOME: /pelican-data
-      SKIP_CADDY: "true"       # ← let Dokploy's proxy handle TLS, not Caddy
+      SKIP_CADDY: "false"          # or just remove this line
+      CADDY_HTTP_ONLY: "true"      # tell Caddy not to do TLS itself
       CACHE_STORE: "redis"
       SESSION_DRIVER: "redis"
       QUEUE_CONNECTION: "redis"
