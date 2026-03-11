@@ -61,7 +61,7 @@ services:
     environment:
       <<: [*panel-environment, *mail-environment]
       XDG_DATA_HOME: /pelican-data
-      # SKIP_CADDY: "true"       # ← let Dokploy's proxy handle TLS, not Caddy
+      SKIP_CADDY: "true"       # ← let Dokploy's proxy handle TLS, not Caddy
       CACHE_STORE: "redis"
       SESSION_DRIVER: "redis"
       QUEUE_CONNECTION: "redis"
