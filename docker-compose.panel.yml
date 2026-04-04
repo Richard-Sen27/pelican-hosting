@@ -9,11 +9,13 @@ services:
       redis:
         condition: service_healthy
     environment:
-      APP_URL: ${APP_URL:-https://panel.example.com}
+      APP_URL: ${APP_URL}
+      LE_EMAIL: ${LE_EMAIL}
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
+      BEHIND_PROXY: ${BEHIND_PROXY:-true}
       APP_TIMEZONE: ${TZ:-UTC}
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-*}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       DB_CONNECTION: mariadb
       DB_HOST: db
       DB_PORT: 3306
