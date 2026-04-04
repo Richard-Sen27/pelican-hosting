@@ -1,0 +1,19 @@
+services:
+  wings:
+    image: ghcr.io/pelican-dev/wings:latest
+    container_name: pelican-wings
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../files/wings/etc:/etc/pelican
+      - ../files/pelican/lib:/var/lib/pelican
+      - ../files/pelican/log:/var/log/pelican
+      - ../files/pelican/tmp:/tmp/pelican
+
+# Notes for Dokploy:
+# - Deploy this compose as a dedicated "Wings" service on a Linux host.
+# - Wings must run with host networking so game allocation ports work correctly.
+# - Required files are expected in ./wings/etc (for example config.yml, group, passwd).

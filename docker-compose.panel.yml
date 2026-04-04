@@ -1,0 +1,81 @@
+services:
+  panel:
+    image: ghcr.io/pelican-dev/panel:latest
+    container_name: pelican-panel
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_URL: ${APP_URL:-https://panel.example.com}
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_TIMEZONE: ${TZ:-UTC}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-*}
+      DB_CONNECTION: mariadb
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE:-panel}
+      DB_USERNAME: ${MYSQL_USER:-pelican}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-changeme_user}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ../files/pelican/panel:/pelican-data
+    ports:
+      - "8080:80"
+    networks:
+      - pelican-panel
+
+  db:
+    image: mariadb:11.4
+    container_name: pelican-db
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-panel}
+      MYSQL_USER: ${MYSQL_USER:-pelican}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme_user}
+    volumes:
+      - ../files/pelican/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD:-changeme_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - pelican-panel
+
+  redis:
+    image: redis:7-alpine
+    container_name: pelican-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ../files/pelican/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - pelican-panel
+
+networks:
+  pelican-panel:
+    name: pelican-panel
+
+# Notes for Dokploy:
+# - Deploy this compose as a dedicated "Panel" service.
+# - Route your domain to container port 80 (mapped above to host 8080).
+# - Use .env values from this repository (see .example.env).
+# - On first boot, create an admin with:
+#   docker compose -f docker-compose.panel.yml exec panel php artisan p:user:make
